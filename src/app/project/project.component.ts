@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Body } from '../furnituremodel/furnituremodels';
 import { FurnituremodelService } from '../furnituremodel/furnituremodel.service';
-import { BomItem, BomService } from '../services/bom.service';
+import { BomItem, BomService, FurnitureBackendItem } from '../services/bom.service';
 
 @Component({
     selector: 'app-project',
@@ -15,8 +15,8 @@ export class ProjectComponent implements OnInit {
 
     constructor(private furniture: FurnituremodelService, private bom: BomService) {}
 
-    public displayedColumns: string[] = ['position', 'name', 'weight', 'symbol'];
-    public dataSource: BomItem[] = [];
+    public displayedColumns: string[] = ['id', 'width', 'heigth', 'depth'];
+    public dataSource: FurnitureBackendItem[] = [];
 
     ngOnInit(): void {
         this.loadBomForSelected();
