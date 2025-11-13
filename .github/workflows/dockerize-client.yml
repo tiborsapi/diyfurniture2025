@@ -2,19 +2,20 @@ name: Build, Publish Docker Image and Render K8s Manifests
 
 on:
   push:
-    branches: 
+    branches:
       - "*"
   workflow_dispatch:
     inputs:
       image_name:
         description: 'Image name (optional)'
         required: false
+        default: diyfurniture-client
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     env:
-      IMAGE_NAME: ${{ github.event.inputs.image_name || 'diyfurniture-client' }}
+      IMAGE_NAME: ${{ github.event.inputs.image_name }}
       IMAGE_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
     steps:
       - name: Checkout
@@ -74,5 +75,4 @@ jobs:
           path: k8s/rendered/
 
       - name: Print pushed image
-        run: |
-          echo "Pushed image ${{ steps.image.outputs.full }}"
+        run: echo "Pushed image ${{ steps.image.outputs.full }}"
