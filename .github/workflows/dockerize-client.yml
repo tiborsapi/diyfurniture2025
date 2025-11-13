@@ -74,4 +74,4 @@ jobs:
 
       - name: Print pushed image
         run:
-          echo "Pushed image: ${{ steps.image.outputs.full }}"
+          echo "Pushed image ${{ steps.image.outputs.full }}"
