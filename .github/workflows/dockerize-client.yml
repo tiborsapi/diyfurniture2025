@@ -2,7 +2,8 @@ name: Build, Publish Docker Image and Render K8s Manifests
 
 on:
   push:
-    branches: [ main ]
+    branches: 
+      - "*"
   workflow_dispatch:
     inputs:
       image_name:
