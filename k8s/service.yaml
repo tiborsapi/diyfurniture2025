@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: diyfurniture-client
+  labels:
+    app: diyfurniture-client
+spec:
+  type: ClusterIP  # change to LoadBalancer if needed
+  selector:
+    app: diyfurniture-client
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP

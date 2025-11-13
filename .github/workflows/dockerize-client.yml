@@ -1,0 +1,68 @@
+name: Build, Publish Docker Image and Render K8s Manifests
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      image_name:
+        description: 'Image name (optional)'
+        required: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ${{ github.event.inputs.image_name || 'diyfurniture-client' }}
+      IMAGE_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+      # If this ref is a tag, use the tag name; otherwise fall back to run number
+      IMAGE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || github.run_number }}
+      FULL_IMAGE: ${{ env.IMAGE_REGISTRY }}/{{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU (for multi-arch, optional)
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.FULL_IMAGE }}
+            ${{ env.IMAGE_REGISTRY }}/{{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            NODE_ENV=production
+          platforms: linux/amd64
+
+      - name: Render Kubernetes deployment with pushed image
+        run: |
+          mkdir -p k8s/rendered
+          echo "Rendering k8s/deployment.yaml -> k8s/rendered/deployment.yaml"
+          sed "s|IMAGE_PLACEHOLDER|${{ env.FULL_IMAGE }}|g" k8s/deployment.yaml > k8s/rendered/deployment.yaml
+          echo "Copying service manifest"
+          cp k8s/service.yaml k8s/rendered/service.yaml
+
+      - name: Upload rendered k8s manifests as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-manifests
+          path: k8s/rendered/
+
+      - name: Print pushed image
+        run: echo "Pushed image: ${{ env.FULL_IMAGE }}"
