@@ -15,7 +15,7 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     env:
-      IMAGE_NAME: ${{ github.event.inputs.image_name }}
+      IMAGE_NAME: diyfurniture-client
       IMAGE_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
     steps:
       - name: Checkout
