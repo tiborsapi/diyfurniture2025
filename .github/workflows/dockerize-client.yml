@@ -73,5 +73,5 @@ jobs:
           path: k8s/rendered/
 
       - name: Print pushed image
-        run:
+        run: |
           echo "Pushed image ${{ steps.image.outputs.full }}"
