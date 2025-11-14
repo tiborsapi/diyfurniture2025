@@ -7,27 +7,35 @@ on:
   workflow_dispatch:
     inputs:
       image_name:
-        description: 'Image name (optional)'
+        description: "Image name (optional)"
         required: false
         default: diyfurniture-client
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+
     env:
-      IMAGE_NAME: diyfurniture-client
+      DEFAULT_IMAGE_NAME: diyfurniture-client
       IMAGE_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up QEMU (optional)
-        uses: docker/setup-qemu-action@v2
-
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
+
+      - name: Determine image name
+        id: name
+        run: |
+          if [[ "${{ github.event.inputs.image_name }}" != "" ]]; then
+            echo "image_name=${{ github.event.inputs.image_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "image_name=${DEFAULT_IMAGE_NAME}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Determine image tag
         id: vars
@@ -42,24 +50,24 @@ jobs:
       - name: Compute full image name
         id: image
         run: |
-          echo "full=${IMAGE_REGISTRY}/${GITHUB_REPOSITORY}:${{ steps.vars.outputs.tag }}" >> $GITHUB_OUTPUT
+          echo "full=${IMAGE_REGISTRY}/${{ github.repository_owner }}/${{ steps.name.outputs.image_name }}:${{ steps.vars.outputs.tag }}" >> $GITHUB_OUTPUT
 
       - name: Log in to container registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.IMAGE_REGISTRY }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: true
           tags: |
             ${{ steps.image.outputs.full }}
-            ${{ env.IMAGE_REGISTRY }}/${{ github.repository }}:latest
+            ${{ env.IMAGE_REGISTRY }}/${{ github.repository_owner }}/${{ steps.name.outputs.image_name }}:latest
           platforms: linux/amd64
 
       - name: Render Kubernetes deployment with pushed image
@@ -76,4 +84,4 @@ jobs:
 
       - name: Print pushed image
         run: |
-          echo "Pushed image ${{ steps.image.outputs.full }}"
+          echo "Pushed image: ${{ steps.image.outputs.full }}"
