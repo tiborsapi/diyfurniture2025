@@ -1,0 +1,94 @@
+<h2 mat-dialog-title>Új BOM tétel hozzáadása</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="bomItemForm" class="bom-item-form">
+    <!-- Type Selection -->
+    <mat-form-field appearance="fill" class="full-width">
+      <mat-label>Típus</mat-label>
+      <mat-select formControlName="type">
+        <mat-option *ngFor="let option of typeOptions" [value]="option.value">
+          {{ option.label }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Name -->
+    <mat-form-field appearance="fill" class="full-width">
+      <mat-label>Név *</mat-label>
+      <input matInput formControlName="name" placeholder="Pl.: Fenyőfa deszka, Fém kilincs">
+      <mat-error *ngIf="bomItemForm.get('name')?.hasError('required')">
+        A név kötelező
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Material Type (for raw materials) -->
+    <mat-form-field appearance="fill" class="full-width" *ngIf="isRawMaterial">
+      <mat-label>Anyagtípus</mat-label>
+      <input matInput formControlName="material_type" placeholder="Pl.: Fenyőfa, Bükkfa, Alumínium">
+    </mat-form-field>
+
+    <!-- Dimensions (for raw materials) -->
+    <div class="dimensions-row" *ngIf="isRawMaterial">
+      <mat-form-field appearance="fill" class="dimension-field">
+        <mat-label>Hosszúság (mm)</mat-label>
+        <input matInput type="number" formControlName="length" min="0">
+      </mat-form-field>
+
+      <mat-form-field appearance="fill" class="dimension-field">
+        <mat-label>Szélesség (mm)</mat-label>
+        <input matInput type="number" formControlName="width" min="0">
+      </mat-form-field>
+
+      <mat-form-field appearance="fill" class="dimension-field">
+        <mat-label>Magasság (mm)</mat-label>
+        <input matInput type="number" formControlName="height" min="0">
+      </mat-form-field>
+    </div>
+
+    <!-- Quantity and Unit -->
+    <div class="quantity-row">
+      <mat-form-field appearance="fill" class="quantity-field">
+        <mat-label>Mennyiség *</mat-label>
+        <input matInput type="number" formControlName="quantity" min="1" required>
+        <mat-error *ngIf="bomItemForm.get('quantity')?.hasError('required')">
+          A mennyiség kötelező
+        </mat-error>
+        <mat-error *ngIf="bomItemForm.get('quantity')?.hasError('min')">
+          A mennyiségnek legalább 1-nek kell lennie
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="fill" class="unit-field">
+        <mat-label>Egység *</mat-label>
+        <mat-select formControlName="unit">
+          <mat-option *ngFor="let option of unitOptions" [value]="option.value">
+            {{ option.label }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <!-- Weight (optional) -->
+    <mat-form-field appearance="fill" class="full-width">
+      <mat-label>Súly (kg)</mat-label>
+      <input matInput type="number" formControlName="weight" min="0" step="0.01">
+      <mat-error *ngIf="bomItemForm.get('weight')?.hasError('min')">
+        A súly nem lehet negatív
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Notes (optional) -->
+    <mat-form-field appearance="fill" class="full-width">
+      <mat-label>Megjegyzés</mat-label>
+      <textarea matInput formControlName="notes" rows="3" placeholder="Opcionális megjegyzések"></textarea>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Mégse</button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!bomItemForm.valid">
+    Hozzáadás
+  </button>
+</mat-dialog-actions>
+
