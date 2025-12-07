@@ -45,12 +45,24 @@ jobs:
           else
             tag="${GITHUB_RUN_NUMBER}"
           fi
+          tag="${GITHUB_SHA}"
           echo "tag=$tag" >> $GITHUB_OUTPUT
 
       - name: Compute full image name
         id: image
         run: |
           echo "full=${IMAGE_REGISTRY}/${{ github.repository_owner }}/${{ steps.name.outputs.image_name }}:${{ steps.vars.outputs.tag }}" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Angular app
+        run: npm run build:prod
 
       - name: Log in to container registry
         uses: docker/login-action@v3
@@ -66,10 +78,11 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ steps.image.outputs.full }}
+            ${{ env.IMAGE_REGISTRY }}/${{ github.repository_owner }}/${{ steps.name.outputs.image_name }}:${{ steps.vars.outputs.tag }}
             ${{ env.IMAGE_REGISTRY }}/${{ github.repository_owner }}/${{ steps.name.outputs.image_name }}:latest
           platforms: linux/amd64
 
       - name: Print pushed image
         run: |
-          echo "Pushed image: ${{ steps.image.outputs.full }}"
+          echo "Pushed image location: ${{ env.IMAGE_REGISTRY }}/${{ github.repository_owner }}/${{ steps.name.outputs.image_name }}:latest"
+          echo "Pushed image: ${{ env.IMAGE_REGISTRY }}/${{ github.repository_owner }}/${{ steps.name.outputs.image_name }}:${{ steps.vars.outputs.tag }}"
