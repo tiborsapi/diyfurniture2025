@@ -45,6 +45,7 @@ jobs:
           else
             tag="${GITHUB_RUN_NUMBER}"
           fi
+          tag="${GITHUB_SHA}"
           echo "tag=$tag" >> $GITHUB_OUTPUT
 
       - name: Compute full image name
