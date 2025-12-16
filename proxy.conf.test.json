@@ -1,0 +1,8 @@
+{
+  "/api": {
+    "target": "http://furniture_backend_e2e:8080",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  }
+}
