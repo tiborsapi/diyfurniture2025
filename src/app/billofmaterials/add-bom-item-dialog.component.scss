@@ -1,0 +1,44 @@
+.bom-item-form {
+  display: flex;
+  flex-direction: column;
+  min-width: 500px;
+  padding: 20px 0;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.dimensions-row {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+.dimension-field {
+  flex: 1;
+}
+
+.quantity-row {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+.quantity-field {
+  flex: 1;
+}
+
+.unit-field {
+  flex: 1;
+}
+
+mat-dialog-content {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+mat-dialog-actions {
+  padding: 16px 24px;
+}
+
