@@ -1,15 +1,27 @@
 <mat-toolbar>
-  <mat-button-toggle-group #group="matButtonToggleGroup" name="action" value="crop_square" aria-label="Draw Tool" (change)="onDrawActionChange($event.value)">
+  <mat-button-toggle-group
+    #group="matButtonToggleGroup"
+    name="action"
+    value="crop_square"
+    aria-label="Draw Tool"
+    (change)="onDrawActionChange($event.value)"
+  >
     <mat-button-toggle value="crop_square">
       <mat-icon>view_compact</mat-icon>
     </mat-button-toggle>
     <mat-button-toggle value="select" aria-label="Text align left">
       <mat-icon>select_all</mat-icon>
     </mat-button-toggle>
-    <mat-button-toggle value="split_rectangle_vertical" aria-label="Text align left">
+    <mat-button-toggle
+      value="split_rectangle_vertical"
+      aria-label="Text align left"
+    >
       <mat-icon>vertical_split</mat-icon>
     </mat-button-toggle>
-    <mat-button-toggle value="split_rectangle_horizontal" aria-label="Text align left">
+    <mat-button-toggle
+      value="split_rectangle_horizontal"
+      aria-label="Text align left"
+    >
       <mat-icon>horizontal_split</mat-icon>
     </mat-button-toggle>
     <mat-button-toggle value="move" aria-label="Text align left">
@@ -17,6 +29,9 @@
     </mat-button-toggle>
   </mat-button-toggle-group>
   <div class="draw-action-buttons">
+    <button mat-icon-button (click)="saveProject()" title="Save project">
+      <mat-icon>save</mat-icon>
+    </button>
     <button mat-icon-button (click)="deleteSelectedElement()">
       <mat-icon>delete_forever</mat-icon>
     </button>
@@ -24,6 +39,27 @@
       <mat-icon>clear_all</mat-icon>
     </button>
   </div>
+
+  <span class="toolbar-spacer"></span>
+
+  @if (isLoading) {
+  <mat-spinner diameter="24"></mat-spinner>
+  } @else if (currentProjectName) {
+  <div class="project-info" [class.unsaved]="hasUnsavedChanges">
+    <mat-icon>folder</mat-icon>
+    <span class="project-name">{{ currentProjectName }}</span>
+    @if (currentVersionNumber) {
+    <span class="version-badge">v{{ currentVersionNumber }}</span>
+    } @if (hasUnsavedChanges) {
+    <span class="unsaved-badge">● Unsaved</span>
+    }
+  </div>
+  } @else {
+  <div class="project-info new-project">
+    <mat-icon>folder_off</mat-icon>
+    <span>New project</span>
+  </div>
+  }
 </mat-toolbar>
 <mat-sidenav-container>
   <mat-sidenav-content>
@@ -31,36 +67,75 @@
   </mat-sidenav-content>
   <mat-sidenav position="end" opened mode="side" id="property-size">
     @if (selectedElement) {
-      <form class="property-form">
-        <mat-form-field class="property-field" appearance="fill">
-          <mat-label class="lbl">Width:</mat-label>
-          <input matInput title="width" name="width" class="pos" type="number" [(ngModel)]="selectedElement.width" (keyup.enter)="onSelectedElementSizeChanged()" (blur)="onSelectedElementSizeChanged()">
-        </mat-form-field>
-        <mat-form-field class="property-field" appearance="fill">
-          <mat-label class="lbl">Height:</mat-label>
-          <input matInput title="height" name="height" class="pos" type="number" [(ngModel)]="selectedElement.height" (keyup.enter)="onSelectedElementSizeChanged()" (blur)="onSelectedElementSizeChanged()">
-        </mat-form-field>
-        <mat-form-field class="property-field" appearance="fill">
-          <mat-label class="lbl">Type:</mat-label>
-          <mat-select name="frontType" [(ngModel)]="selectedFrontTypes" (selectionChange)="selectFrontType($event)">
-            @for (option of frontTypes; track option) {
-              <mat-option [value]="option.value">{{option.viewValue}}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-      </form>
-    }
-    @if (selectedElementBody) {
-      <form class="property-form">
-        <mat-form-field class="property-field" appearance="fill">
-          <mat-label class="lbl">Deepth:</mat-label>
-          <input matInput title="deepth" name="deepth" class="pos" type="number" [(ngModel)]="selectedElementBody.deepth" (keyup.enter)="changeBodyDetails()" (blur)="changeBodyDetails()">
-        </mat-form-field>
-        <mat-form-field class="property-field" appearance="fill">
-          <mat-label class="lbl">Material thickness:</mat-label>
-          <input matInput title="thickness" name="thickness" class="pos" type="number" [(ngModel)]="selectedElementBody.thickness" (keyup.enter)="changeBodyDetails()" (blur)="changeBodyDetails()">
-        </mat-form-field>
-      </form>
+    <form class="property-form">
+      <mat-form-field class="property-field" appearance="fill">
+        <mat-label class="lbl">Width:</mat-label>
+        <input
+          matInput
+          title="width"
+          name="width"
+          class="pos"
+          type="number"
+          [(ngModel)]="selectedElement.width"
+          (keyup.enter)="onSelectedElementSizeChanged()"
+          (blur)="onSelectedElementSizeChanged()"
+        />
+      </mat-form-field>
+      <mat-form-field class="property-field" appearance="fill">
+        <mat-label class="lbl">Height:</mat-label>
+        <input
+          matInput
+          title="height"
+          name="height"
+          class="pos"
+          type="number"
+          [(ngModel)]="selectedElement.height"
+          (keyup.enter)="onSelectedElementSizeChanged()"
+          (blur)="onSelectedElementSizeChanged()"
+        />
+      </mat-form-field>
+      <mat-form-field class="property-field" appearance="fill">
+        <mat-label class="lbl">Type:</mat-label>
+        <mat-select
+          name="frontType"
+          [(ngModel)]="selectedFrontTypes"
+          (selectionChange)="selectFrontType($event)"
+        >
+          @for (option of frontTypes; track option) {
+          <mat-option [value]="option.value">{{ option.viewValue }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </form>
+    } @if (selectedElementBody) {
+    <form class="property-form">
+      <mat-form-field class="property-field" appearance="fill">
+        <mat-label class="lbl">Deepth:</mat-label>
+        <input
+          matInput
+          title="deepth"
+          name="deepth"
+          class="pos"
+          type="number"
+          [(ngModel)]="selectedElementBody.deepth"
+          (keyup.enter)="changeBodyDetails()"
+          (blur)="changeBodyDetails()"
+        />
+      </mat-form-field>
+      <mat-form-field class="property-field" appearance="fill">
+        <mat-label class="lbl">Material thickness:</mat-label>
+        <input
+          matInput
+          title="thickness"
+          name="thickness"
+          class="pos"
+          type="number"
+          [(ngModel)]="selectedElementBody.thickness"
+          (keyup.enter)="changeBodyDetails()"
+          (blur)="changeBodyDetails()"
+        />
+      </mat-form-field>
+    </form>
     }
   </mat-sidenav>
 </mat-sidenav-container>

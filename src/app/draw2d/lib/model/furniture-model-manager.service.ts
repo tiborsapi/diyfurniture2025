@@ -1,8 +1,8 @@
 import {
   BodyFrontDetails,
   FrontElement,
-} from './../../../furnituremodel/furnituremodels';
-import { ViewFurnitureBody } from './furniture-body.viewmodel';
+} from "./../../../furnituremodel/furnituremodels";
+import { ViewFurnitureBody } from "./furniture-body.viewmodel";
 import {
   FurnitureBody,
   FurnitureElement,
@@ -10,25 +10,33 @@ import {
   HorizontalSplit,
   Split,
   VerticalSplit,
-} from './furniture-body.model';
-import { Injectable } from '@angular/core';
-import { FurnituremodelService } from 'src/app/furnituremodel/furnituremodel.service';
-import { Body } from 'src/app/furnituremodel/furnituremodels';
-import { ModelchangeService } from '../eventhandling/modelchange.service';
+} from "./furniture-body.model";
+import { Injectable } from "@angular/core";
+import { FurnituremodelService } from "src/app/furnituremodel/furnituremodel.service";
+import { Body } from "src/app/furnituremodel/furnituremodels";
+import { ModelchangeService } from "../eventhandling/modelchange.service";
+import { BodyDto, ProjectBodyDto } from "src/app/models/project.models";
 
 @Injectable()
 export class FurnitureModelManagerService {
-
-  public findBody(element: FurnitureElement) : FurnitureBody {
+  public findBody(element: FurnitureElement): FurnitureBody {
     const body = this.findParent(element);
     return body as FurnitureBody;
   }
 
-  private findParent(element: FurnitureElement) : FurnitureElement {
+  private findParent(element: FurnitureElement): FurnitureElement {
     while (element.parrent != null) {
       element = element.parrent;
     }
     return element;
+  }
+
+  public getBodiesForApi(): BodyDto[] {
+    return this.rectangles.map((body) => ({
+      width: Math.round(body.width * 10).toString(),
+      heigth: Math.round(body.height * 10).toString(),
+      depth: body.deepth.toString(),
+    }));
   }
 
   refresh(element: FurnitureElement) {
@@ -36,9 +44,19 @@ export class FurnitureModelManagerService {
     this.furnitureService.furnitureBodyPosition.update(parent.id, {
       details: parent.split,
     });
-    const resultArray : FrontElement[] = [];
-    this.addSplit(parent.split, parent.id, parent.posX, parent.posY,resultArray);
-    this.furnitureService.furnitureBodys.update(parent.id,{'frontElements':resultArray,'deepth':parent.deepth, 'thickness':parent.thickness});
+    const resultArray: FrontElement[] = [];
+    this.addSplit(
+      parent.split,
+      parent.id,
+      parent.posX,
+      parent.posY,
+      resultArray
+    );
+    this.furnitureService.furnitureBodys.update(parent.id, {
+      frontElements: resultArray,
+      deepth: parent.deepth,
+      thickness: parent.thickness,
+    });
   }
 
   private rectangles: FurnitureBody[] = [];
@@ -46,26 +64,26 @@ export class FurnitureModelManagerService {
 
   private converSplit(obj: any, parent: FurnitureElement) {
     if (obj == undefined) return null;
-    if (obj['topElement'] != undefined) {
-      const top = this.convertElem(obj['topElement'], parent);
-      const bottom = this.convertElem(obj['bottomElement'], parent);
-      return new HorizontalSplit(obj['relativePositionY'], top, bottom);
+    if (obj["topElement"] != undefined) {
+      const top = this.convertElem(obj["topElement"], parent);
+      const bottom = this.convertElem(obj["bottomElement"], parent);
+      return new HorizontalSplit(obj["relativePositionY"], top, bottom);
     }
-    const left = this.convertElem(obj['leftElement'], parent);
-    const right = this.convertElem(obj['rightElement'], parent);
-    return new VerticalSplit(obj['relativePositionX'], left, right);
+    const left = this.convertElem(obj["leftElement"], parent);
+    const right = this.convertElem(obj["rightElement"], parent);
+    return new VerticalSplit(obj["relativePositionX"], left, right);
   }
 
   convertElem(elem: any, parent: FurnitureElement) {
     let el = new FurnitureElement(
-      elem['posX'],
-      elem['posY'],
-      elem['width'],
-      elem['height'],
-      elem['type'],
+      elem["posX"],
+      elem["posY"],
+      elem["width"],
+      elem["height"],
+      elem["type"],
       parent
     );
-    el.split = this.converSplit(elem['split'], el);
+    el.split = this.converSplit(elem["split"], el);
     return el;
   }
 
@@ -81,8 +99,8 @@ export class FurnitureModelManagerService {
             let fb = new FurnitureBody(
               0,
               0,
-              el.width/10,
-              el.height/10,
+              el.width / 10,
+              el.height / 10,
               el.deepth,
               el.thickness,
               FurnitureElementType.BODY,
@@ -117,15 +135,27 @@ export class FurnitureModelManagerService {
 
   public addFurnitureBody(furnitureBody: FurnitureBody): void {
     this.rectangles.push(furnitureBody);
-      const idBody = this.furnitureService.furnitureBodys.add(
-          new Body('Item', Math.round(furnitureBody.width*10), Math.round(furnitureBody.height*10),furnitureBody.deepth,furnitureBody.thickness,[])
-        );
-      idBody.then((id) => {
-        furnitureBody.id = id;
-        this.furnitureService.furnitureBodyPosition.add(
-          new BodyFrontDetails(id, furnitureBody.x, furnitureBody.y, furnitureBody.split)
-        );
-      });
+    const idBody = this.furnitureService.furnitureBodys.add(
+      new Body(
+        "Item",
+        Math.round(furnitureBody.width * 10),
+        Math.round(furnitureBody.height * 10),
+        furnitureBody.deepth,
+        furnitureBody.thickness,
+        []
+      )
+    );
+    idBody.then((id) => {
+      furnitureBody.id = id;
+      this.furnitureService.furnitureBodyPosition.add(
+        new BodyFrontDetails(
+          id,
+          furnitureBody.x,
+          furnitureBody.y,
+          furnitureBody.split
+        )
+      );
+    });
   }
 
   private addElement(
@@ -133,41 +163,55 @@ export class FurnitureModelManagerService {
     id: number,
     x: number,
     y: number,
-    resultArray : FrontElement[]
+    resultArray: FrontElement[]
   ) {
     if (element.split != null) {
-      this.addSplit(element.split, id, element.posX + x, element.posY + y,resultArray);
+      this.addSplit(
+        element.split,
+        id,
+        element.posX + x,
+        element.posY + y,
+        resultArray
+      );
       return;
     }
     resultArray.push(
       new FrontElement(
         id,
         element.type.toString(),
-        Math.round((element.posX + x)*10) + 2,
-        Math.round((element.posY + y)*10) + 2,
-        Math.round(element.width*10) - 4,
-        Math.round(element.height*10) - 4
+        Math.round((element.posX + x) * 10) + 2,
+        Math.round((element.posY + y) * 10) + 2,
+        Math.round(element.width * 10) - 4,
+        Math.round(element.height * 10) - 4
       )
     );
   }
 
-  private addSplit(split: Split | null, id: number, x: number, y: number,resultArray : FrontElement[]) {
+  private addSplit(
+    split: Split | null,
+    id: number,
+    x: number,
+    y: number,
+    resultArray: FrontElement[]
+  ) {
     if (split == null) return;
     if (split instanceof HorizontalSplit) {
-      this.addElement(split.topElement, id, x, y,resultArray);
-      this.addElement(split.bottomElement, id, x, y,resultArray);
+      this.addElement(split.topElement, id, x, y, resultArray);
+      this.addElement(split.bottomElement, id, x, y, resultArray);
       return;
     }
     if (split instanceof VerticalSplit) {
-      this.addElement(split.leftElement, id, x, y,resultArray);
-      this.addElement(split.rightElement, id, x, y,resultArray);
+      this.addElement(split.leftElement, id, x, y, resultArray);
+      this.addElement(split.rightElement, id, x, y, resultArray);
       return;
     }
   }
 
   public get cx(): CanvasRenderingContext2D {
     if (this._cx == null) {
-      throw new Error('CanvasRenderingContext2D not initialized. Ensure Draw2dComponent sets modelManager.cx before using it.');
+      throw new Error(
+        "CanvasRenderingContext2D not initialized. Ensure Draw2dComponent sets modelManager.cx before using it."
+      );
     }
     return this._cx;
   }
@@ -190,7 +234,13 @@ export class FurnitureModelManagerService {
     return result;
   }
 
-  public findSelectedSplit(x: number, y: number): { element: FurnitureElement, split: HorizontalSplit | VerticalSplit } | null {
+  public findSelectedSplit(
+    x: number,
+    y: number
+  ): {
+    element: FurnitureElement;
+    split: HorizontalSplit | VerticalSplit;
+  } | null {
     for (let body of this.getFurnitureBodies()) {
       const splitResult = this.findSplitAtPosition(x, y, body, 0, 0);
       if (splitResult) {
@@ -207,7 +257,10 @@ export class FurnitureModelManagerService {
     element: FurnitureElement,
     offsetX: number,
     offsetY: number
-  ): { element: FurnitureElement, split: HorizontalSplit | VerticalSplit } | null {
+  ): {
+    element: FurnitureElement;
+    split: HorizontalSplit | VerticalSplit;
+  } | null {
     if (!element.split) return null;
 
     const elementX = offsetX + element.posX;
@@ -222,13 +275,21 @@ export class FurnitureModelManagerService {
       if (element.split instanceof HorizontalSplit) {
         const splitY = bodyY + element.split.relativePositionY;
         // Check if click is near the horizontal split line (within 5 pixels)
-        if (Math.abs(y - splitY) <= 5 && x >= bodyX && x <= bodyX + element.width) {
+        if (
+          Math.abs(y - splitY) <= 5 &&
+          x >= bodyX &&
+          x <= bodyX + element.width
+        ) {
           return { element, split: element.split };
         }
       } else if (element.split instanceof VerticalSplit) {
         const splitX = bodyX + element.split.relativePositionX;
         // Check if click is near the vertical split line (within 5 pixels)
-        if (Math.abs(x - splitX) <= 5 && y >= bodyY && y <= bodyY + element.height) {
+        if (
+          Math.abs(x - splitX) <= 5 &&
+          y >= bodyY &&
+          y <= bodyY + element.height
+        ) {
           return { element, split: element.split };
         }
       }
@@ -237,13 +298,21 @@ export class FurnitureModelManagerService {
       if (element.split instanceof HorizontalSplit) {
         const splitY = elementY + element.split.relativePositionY;
         // Check if click is near the horizontal split line (within 5 pixels)
-        if (Math.abs(y - splitY) <= 5 && x >= elementX && x <= elementX + element.width) {
+        if (
+          Math.abs(y - splitY) <= 5 &&
+          x >= elementX &&
+          x <= elementX + element.width
+        ) {
           return { element, split: element.split };
         }
       } else if (element.split instanceof VerticalSplit) {
         const splitX = elementX + element.split.relativePositionX;
         // Check if click is near the vertical split line (within 5 pixels)
-        if (Math.abs(x - splitX) <= 5 && y >= elementY && y <= elementY + element.height) {
+        if (
+          Math.abs(x - splitX) <= 5 &&
+          y >= elementY &&
+          y <= elementY + element.height
+        ) {
           return { element, split: element.split };
         }
       }
@@ -251,16 +320,40 @@ export class FurnitureModelManagerService {
 
     // Recursively check child elements
     if (element.split instanceof HorizontalSplit) {
-      const childResult = this.findSplitAtPosition(x, y, element.split.topElement, elementX, elementY);
+      const childResult = this.findSplitAtPosition(
+        x,
+        y,
+        element.split.topElement,
+        elementX,
+        elementY
+      );
       if (childResult) return childResult;
 
-      const childResult2 = this.findSplitAtPosition(x, y, element.split.bottomElement, elementX, elementY);
+      const childResult2 = this.findSplitAtPosition(
+        x,
+        y,
+        element.split.bottomElement,
+        elementX,
+        elementY
+      );
       if (childResult2) return childResult2;
     } else if (element.split instanceof VerticalSplit) {
-      const childResult = this.findSplitAtPosition(x, y, element.split.leftElement, elementX, elementY);
+      const childResult = this.findSplitAtPosition(
+        x,
+        y,
+        element.split.leftElement,
+        elementX,
+        elementY
+      );
       if (childResult) return childResult;
 
-      const childResult2 = this.findSplitAtPosition(x, y, element.split.rightElement, elementX, elementY);
+      const childResult2 = this.findSplitAtPosition(
+        x,
+        y,
+        element.split.rightElement,
+        elementX,
+        elementY
+      );
       if (childResult2) return childResult2;
     }
 
@@ -273,7 +366,9 @@ export class FurnitureModelManagerService {
 
   public removeElement(element: FurnitureElement): void {
     // Find the element in the rectangles array
-    const index = this.rectangles.findIndex(rect => rect === element || this.containsElement(rect, element));
+    const index = this.rectangles.findIndex(
+      (rect) => rect === element || this.containsElement(rect, element)
+    );
 
     if (index !== -1) {
       const elementToRemove = this.rectangles[index];
@@ -281,7 +376,9 @@ export class FurnitureModelManagerService {
       // Remove from database if it has an ID
       if (elementToRemove.id !== undefined) {
         this.furnitureService.furnitureBodys.delete(elementToRemove.id);
-        this.furnitureService.furnitureBodyPosition.where({ bodyId: elementToRemove.id }).delete();
+        this.furnitureService.furnitureBodyPosition
+          .where({ bodyId: elementToRemove.id })
+          .delete();
       }
 
       // Remove from the rectangles array
@@ -304,16 +401,23 @@ export class FurnitureModelManagerService {
     this.eventManager.modelChanged();
   }
 
-  private containsElement(parent: FurnitureElement, target: FurnitureElement): boolean {
+  private containsElement(
+    parent: FurnitureElement,
+    target: FurnitureElement
+  ): boolean {
     if (parent === target) return true;
 
     if (parent.split) {
       if (parent.split instanceof HorizontalSplit) {
-        return this.containsElement(parent.split.topElement, target) ||
-               this.containsElement(parent.split.bottomElement, target);
+        return (
+          this.containsElement(parent.split.topElement, target) ||
+          this.containsElement(parent.split.bottomElement, target)
+        );
       } else if (parent.split instanceof VerticalSplit) {
-        return this.containsElement(parent.split.leftElement, target) ||
-               this.containsElement(parent.split.rightElement, target);
+        return (
+          this.containsElement(parent.split.leftElement, target) ||
+          this.containsElement(parent.split.rightElement, target)
+        );
       }
     }
 
@@ -322,7 +426,10 @@ export class FurnitureModelManagerService {
 
   // Resize utilities and helpers
 
-  public resizeElementHeightPreservingPercent(element: FurnitureElement, newHeight: number): void {
+  public resizeElementHeightPreservingPercent(
+    element: FurnitureElement,
+    newHeight: number
+  ): void {
     const body = this.findBody(element);
     if (body.height === 0 || newHeight <= 0) {
       return;
@@ -338,7 +445,10 @@ export class FurnitureModelManagerService {
     this.eventManager.modelChanged();
   }
 
-  public resizeElementWidthNoOverlap(element: FurnitureElement, newWidth: number): void {
+  public resizeElementWidthNoOverlap(
+    element: FurnitureElement,
+    newWidth: number
+  ): void {
     if (newWidth <= 0) {
       return;
     }
@@ -357,7 +467,7 @@ export class FurnitureModelManagerService {
     }
 
     const { ancestor, split, side } = context;
-    const container = side === 'left' ? split.leftElement : split.rightElement;
+    const container = side === "left" ? split.leftElement : split.rightElement;
 
     if (element.width === 0) return;
     const factor = newWidth / element.width;
@@ -366,9 +476,12 @@ export class FurnitureModelManagerService {
     this.scaleSubtreeWidthRootedAt(container, factor);
 
     // After scaling, container.width has been multiplied; adjust split to match exact container width
-    const containerWidth = Math.min(Math.max(0, container.width), ancestor.width);
+    const containerWidth = Math.min(
+      Math.max(0, container.width),
+      ancestor.width
+    );
 
-    if (side === 'left') {
+    if (side === "left") {
       split.relativePositionX = containerWidth;
     } else {
       split.relativePositionX = ancestor.width - containerWidth;
@@ -379,7 +492,10 @@ export class FurnitureModelManagerService {
     split.leftElement.width = split.relativePositionX;
 
     split.rightElement.posX = split.relativePositionX;
-    split.rightElement.width = Math.max(0, ancestor.width - split.relativePositionX);
+    split.rightElement.width = Math.max(
+      0,
+      ancestor.width - split.relativePositionX
+    );
 
     this.refresh(ancestor);
     this.eventManager.modelChanged();
@@ -411,7 +527,10 @@ export class FurnitureModelManagerService {
     recurse(body, true);
   }
 
-  private scaleSubtreeWidthRootedAt(element: FurnitureElement, factor: number): void {
+  private scaleSubtreeWidthRootedAt(
+    element: FurnitureElement,
+    factor: number
+  ): void {
     if (factor === 1) return;
 
     const recurse = (e: FurnitureElement, isRoot: boolean) => {
@@ -437,7 +556,11 @@ export class FurnitureModelManagerService {
     recurse(element, true);
   }
 
-  private findNearestVerticalSplitContext(target: FurnitureElement): { ancestor: FurnitureElement, split: VerticalSplit, side: 'left' | 'right' } | null {
+  private findNearestVerticalSplitContext(target: FurnitureElement): {
+    ancestor: FurnitureElement;
+    split: VerticalSplit;
+    side: "left" | "right";
+  } | null {
     let current: FurnitureElement | null = target;
     let ancestor: FurnitureElement | null = current?.parrent ?? null;
 
@@ -445,7 +568,7 @@ export class FurnitureModelManagerService {
       const s = ancestor.split;
       if (s instanceof VerticalSplit) {
         const inLeft = this.containsElement(s.leftElement, target);
-        return { ancestor, split: s, side: inLeft ? 'left' : 'right' };
+        return { ancestor, split: s, side: inLeft ? "left" : "right" };
       }
       current = ancestor;
       ancestor = ancestor.parrent;
@@ -494,7 +617,44 @@ export class FurnitureModelManagerService {
     }
     return null;
   }
+
+  public loadBodiesFromProject(bodies: ProjectBodyDto[]): void {
+    // Töröljük a meglévő elemeket (csak memóriából, nem IndexedDB-ből)
+    this.rectangles = [];
+
+    let startX = 50;
+    const startY = 50;
+    const gap = 30;
+
+    for (const body of bodies) {
+      const fb = new FurnitureBody(
+        0, // posX (relatív)
+        0, // posY (relatív)
+        body.width / 10, // width (mm -> canvas units)
+        body.heigth / 10, // height
+        body.depth, // depth
+        18, // thickness (default)
+        FurnitureElementType.BODY,
+        startX, // x (canvas pozíció)
+        startY, // y (canvas pozíció)
+        null, // parent
+        null, // split
+        body.id // id from backend
+      );
+
+      this.rectangles.push(fb);
+      startX += fb.width + gap; // Következő body mellé
+    }
+
+    this.eventManager.modelChanged();
+  }
+
+  // Összes elem törlése memóriából (IndexedDB nélkül)
+  public clearMemory(): void {
+    this.rectangles = [];
+    this.eventManager.modelChanged();
+  }
 }
 function convertElem(arg0: any) {
-  throw new Error('Function not implemented.');
+  throw new Error("Function not implemented.");
 }

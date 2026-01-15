@@ -24,6 +24,7 @@
     "@angular/platform-browser-dynamic": "^20.3.1",
     "@angular/router": "^20.3.1",
     "@types/three": "^0.139.0",
+    "axios": "^1.13.2",
     "dexie": "^3.2.2",
     "ngx-webstorage": "^20.0.0",
     "rxjs": "~6.6.0",

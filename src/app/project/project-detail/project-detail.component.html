@@ -1,0 +1,321 @@
+<div class="detail-overlay" *ngIf="isOpen" (click)="close()">
+  <div class="detail-panel" (click)="$event.stopPropagation()">
+    <!-- Loading State -->
+    <div class="loading-state" *ngIf="loading">
+      <div class="spinner"></div>
+      <span>Loading project details...</span>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-state" *ngIf="error && !loading">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ error }}</p>
+      <button mat-raised-button color="primary" (click)="loadProjectDetails()">
+        <mat-icon>refresh</mat-icon>
+        Retry
+      </button>
+    </div>
+
+    <!-- Main Content -->
+    <ng-container *ngIf="project && !loading && !error">
+      <!-- Header -->
+      <header class="detail-header">
+        <div class="header-content">
+          <div class="project-badge">
+            <span class="badge-id">#{{ project.id }}</span>
+            <span class="badge-version" *ngIf="selectedVersion">
+              v{{ selectedVersion.versionNumber }}
+            </span>
+          </div>
+          <h1 class="project-title">{{ project.name }}</h1>
+          <p class="project-description">
+            {{ project.description || "No description provided" }}
+          </p>
+        </div>
+        <button
+          mat-icon-button
+          class="close-btn"
+          (click)="close()"
+          aria-label="Close"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </header>
+
+      <!-- Quick Stats Bar -->
+      <div class="stats-bar">
+        <div class="stat-item">
+          <mat-icon>calendar_today</mat-icon>
+          <div class="stat-content">
+            <span class="stat-label">Created</span>
+            <span class="stat-value">{{ formatDate(project.createdAt) }}</span>
+          </div>
+        </div>
+        <div class="stat-item">
+          <mat-icon>update</mat-icon>
+          <div class="stat-content">
+            <span class="stat-label">Updated</span>
+            <span class="stat-value">{{ formatDate(project.updatedAt) }}</span>
+          </div>
+        </div>
+        <div class="stat-item">
+          <mat-icon>history</mat-icon>
+          <div class="stat-content">
+            <span class="stat-label">Versions</span>
+            <span class="stat-value">{{ project.versions?.length || 0 }}</span>
+          </div>
+        </div>
+        <div class="stat-item">
+          <mat-icon>view_in_ar</mat-icon>
+          <div class="stat-content">
+            <span class="stat-label">Bodies</span>
+            <span class="stat-value">{{ getTotalBodies() }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content Area -->
+      <div class="detail-body">
+        <!-- Left: Bodies Section -->
+        <section class="bodies-section">
+          <div class="section-header">
+            <h2>
+              <mat-icon>widgets</mat-icon>
+              Components
+              <span class="count-badge">{{ getTotalBodies() }}</span>
+            </h2>
+            <div class="view-toggle">
+              <button
+                mat-icon-button
+                [class.active]="bodiesViewMode === 'grid'"
+                (click)="bodiesViewMode = 'grid'"
+                matTooltip="Grid View"
+              >
+                <mat-icon>grid_view</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                [class.active]="bodiesViewMode === 'table'"
+                (click)="bodiesViewMode = 'table'"
+                matTooltip="Table View"
+              >
+                <mat-icon>view_list</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                [class.active]="bodiesViewMode === 'visual'"
+                (click)="bodiesViewMode = 'visual'"
+                matTooltip="Visual View"
+              >
+                <mat-icon>view_in_ar</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- Grid View -->
+          <div
+            class="bodies-grid"
+            *ngIf="bodiesViewMode === 'grid' && selectedVersion?.bodies?.length"
+          >
+            <div
+              class="body-card"
+              *ngFor="let body of selectedVersion?.bodies; let i = index"
+              [style.--accent-color]="getBodyColor(i)"
+            >
+              <div class="body-card-header">
+                <span class="body-index">{{ i + 1 }}</span>
+                <span class="body-id">#{{ body.id }}</span>
+              </div>
+              <div class="body-dimensions">
+                <div class="dimension">
+                  <span class="dim-label">W</span>
+                  <span class="dim-value">{{
+                    formatDimension(body.width)
+                  }}</span>
+                </div>
+                <div class="dimension">
+                  <span class="dim-label">H</span>
+                  <span class="dim-value">{{
+                    formatDimension(body.heigth)
+                  }}</span>
+                </div>
+                <div class="dimension">
+                  <span class="dim-label">D</span>
+                  <span class="dim-value">{{
+                    formatDimension(body.depth)
+                  }}</span>
+                </div>
+              </div>
+              <div class="body-visual">
+                <div
+                  class="box-preview"
+                  [style.width.px]="getPreviewWidth(body)"
+                  [style.height.px]="getPreviewHeight(body)"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Table View -->
+          <div
+            class="bodies-table-wrapper"
+            *ngIf="
+              bodiesViewMode === 'table' && selectedVersion?.bodies?.length
+            "
+          >
+            <table class="bodies-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>ID</th>
+                  <th>Width</th>
+                  <th>Height</th>
+                  <th>Depth</th>
+                  <th>Volume</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let body of selectedVersion?.bodies; let i = index">
+                  <td class="index-cell">{{ i + 1 }}</td>
+                  <td class="id-cell">{{ body.id }}</td>
+                  <td>{{ formatDimension(body.width) }}</td>
+                  <td>{{ formatDimension(body.heigth) }}</td>
+                  <td>{{ formatDimension(body.depth) }}</td>
+                  <td class="volume-cell">{{ calculateVolume(body) }} m³</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Visual View -->
+          <div
+            class="bodies-visual"
+            *ngIf="
+              bodiesViewMode === 'visual' && selectedVersion?.bodies?.length
+            "
+          >
+            <div class="visual-canvas">
+              <div
+                class="body-block"
+                *ngFor="let body of selectedVersion?.bodies; let i = index"
+                [style.--color]="getBodyColor(i)"
+                [style.width.px]="getBlockWidth(body)"
+                [style.height.px]="getBlockHeight(body)"
+                [matTooltip]="
+                  '#' +
+                  (i + 1) +
+                  ': ' +
+                  body.width +
+                  ' x ' +
+                  body.heigth +
+                  ' x ' +
+                  body.depth +
+                  'mm'
+                "
+              >
+                <span class="block-label">{{ i + 1 }}</span>
+              </div>
+            </div>
+            <p class="visual-hint">Hover over blocks to see dimensions</p>
+          </div>
+
+          <!-- Empty State -->
+          <div class="empty-bodies" *ngIf="!selectedVersion?.bodies?.length">
+            <mat-icon>inbox</mat-icon>
+            <p>No components in this version</p>
+          </div>
+        </section>
+
+        <!-- Right: Version History -->
+        <aside class="versions-section">
+          <div class="section-header">
+            <h2>
+              <mat-icon>history</mat-icon>
+              Version History
+            </h2>
+          </div>
+
+          <div class="versions-list" *ngIf="project.versions?.length">
+            <div
+              class="version-item"
+              *ngFor="let version of project.versions"
+              [class.active]="selectedVersion?.id === version.id"
+              [class.latest]="isLatestVersion(version)"
+              (click)="selectVersion(version)"
+            >
+              <div class="version-indicator">
+                <div class="version-dot"></div>
+                <div class="version-line"></div>
+              </div>
+
+              <div class="version-content">
+                <div class="version-header">
+                  <span class="version-number"
+                    >Version {{ version.versionNumber }}</span
+                  >
+                  <span class="latest-badge" *ngIf="isLatestVersion(version)"
+                    >Latest</span
+                  >
+                </div>
+                <p class="version-note">
+                  {{ version.versionNote || "No note" }}
+                </p>
+                <span class="version-date">{{
+                  formatDate(version.savedAt)
+                }}</span>
+                <div class="version-meta">
+                  <span class="meta-item">
+                    <mat-icon>widgets</mat-icon>
+                    {{ version.bodies?.length || 0 }} bodies
+                  </span>
+                </div>
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  class="restore-btn"
+                  *ngIf="!isLatestVersion(version)"
+                  [disabled]="restoringVersion"
+                  (click)="restoreVersion(version); $event.stopPropagation()"
+                >
+                  <mat-icon>restore</mat-icon>
+                  Restore
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="empty-versions" *ngIf="!project.versions?.length">
+            <mat-icon>history_toggle_off</mat-icon>
+            <p>No version history</p>
+          </div>
+        </aside>
+      </div>
+
+      <!-- Footer Actions -->
+      <footer class="detail-footer">
+        <div class="footer-left">
+          <span class="project-status" [class.archived]="project.deletedAt">
+            <mat-icon>{{
+              project.deletedAt ? "archive" : "folder_open"
+            }}</mat-icon>
+            {{ project.deletedAt ? "Archived" : "Active" }}
+          </span>
+        </div>
+        <div class="footer-actions">
+          <button mat-raised-button color="primary" (click)="openEditDialog()">
+            <mat-icon>edit</mat-icon>
+            Edit
+          </button>
+          <button mat-raised-button (click)="archiveProject()">
+            <mat-icon>archive</mat-icon>
+            Archive
+          </button>
+          <button mat-raised-button color="warn" (click)="deleteProject()">
+            <mat-icon>delete</mat-icon>
+            Delete
+          </button>
+        </div>
+      </footer>
+    </ng-container>
+  </div>
+</div>
