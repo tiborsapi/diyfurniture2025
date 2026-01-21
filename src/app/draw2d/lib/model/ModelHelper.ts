@@ -19,7 +19,9 @@ export class ModelHelper {
       rectangle.posX,
       rectangle.posY,
       null,
-      null
+      null,
+      0,
+      'pine'
     );
     return body;
   }

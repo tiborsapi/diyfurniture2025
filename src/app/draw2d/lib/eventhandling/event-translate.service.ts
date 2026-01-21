@@ -54,6 +54,7 @@ export class EventTranslateService {
             y2: res[0].clientY - rect.top,
             x1: res[1].clientX - rect.left,
             y1: res[1].clientY - rect.top,
+            shiftKey: res[1].shiftKey,
           };
           sub.next(move);
         });
@@ -66,6 +67,7 @@ export class EventTranslateService {
             y2: 0,
             x1: event.clientX - rect.left,
             y1: event.clientY - rect.top,
+            shiftKey: event.shiftKey,
           };
           sub.next(start);
         }
@@ -79,6 +81,7 @@ export class EventTranslateService {
             y2: 0,
             x1: event.clientX - rect.left,
             y1: event.clientY - rect.top,
+            shiftKey: event.shiftKey,
           };
           sub.next(end);
         }

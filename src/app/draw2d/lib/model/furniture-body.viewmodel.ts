@@ -21,15 +21,14 @@ export class ViewFurnitureElement {
   }
 
   protected split: ViewSplit | null = null;
+  
   public draw(x: number, y: number, draw: Draw2DSupportService): void {
     if (this.model != null) {
-      draw.setDrawColor('#000');
-      draw.drawRectangle(convertToRectangle(x,y,this.model));
+      draw.drawRectangle(convertToRectangle(x, y, this.model));
+      
       if (this.split != null) {
-        // Propagate accumulated offsets so nested split children are positioned correctly
         this.split.draw(x + this.model.posX, y + this.model.posY, draw);
       }
-
     }
   }
 }
@@ -41,8 +40,9 @@ function convertToRectangle(x:number,y:number,element:FurnitureElement): Rectang
     posX: x + element.posX,
     posY: y + element.posY,
     width: element.width,
-    height: element.height
-  };
+    height: element.height,
+    material: element.material
+  } as any;
 }
 export class ViewFurnitureBody extends ViewFurnitureElement {
   public draw(x: number, y: number, draw: Draw2DSupportService): void {

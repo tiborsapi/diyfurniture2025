@@ -10,6 +10,7 @@ export enum FurnitureElementType {
   DRAWER,
   DOOR,
   UNKNOWN,
+  SHELF
 }
 
 export enum FurnitureElementState {
@@ -28,7 +29,8 @@ export class SelectedFurniture implements Rectangle {
     public height: number,
     public deepth: number,
     public thickness: number,
-    public furnitureType: FurnitureElementType
+    public furnitureType: FurnitureElementType,
+    public material: string = 'pine'
   ) {}
 }
 
@@ -42,8 +44,29 @@ export class FurnitureElement implements Rectangle {
     public parrent: FurnitureElement | null = null,
     public split: Split | null = null,
     public id: number = 0,
-    public state: FurnitureElementState = FurnitureElementState.NEW
+    public state: FurnitureElementState = FurnitureElementState.NEW,
+    public material: string = 'pine'
   ) {}
+
+  public draw(x: number, y: number, drawSupport: any): void {
+    const rectToDraw = {
+      posX: this.absoluteX,
+      posY: this.absoluteY,
+      width: this.width,
+      height: this.height,
+      material: this.material
+    };
+
+    drawSupport.drawRectangle(rectToDraw);
+
+    if (this.split instanceof HorizontalSplit) {
+      this.split.topElement.draw(x, y, drawSupport);
+      this.split.bottomElement.draw(x, y, drawSupport);
+    } else if (this.split instanceof VerticalSplit) {
+      this.split.leftElement.draw(x, y, drawSupport);
+      this.split.rightElement.draw(x, y, drawSupport);
+    }
+  }
 
   public get absoluteX() : number {
     return this.parrent==null?this.posX:this.parrent.absoluteX+this.posX;
@@ -52,7 +75,6 @@ export class FurnitureElement implements Rectangle {
   public get absoluteY() : number {
     return this.parrent==null?this.posY:this.parrent.absoluteY+this.posY;
   }
-
 }
 
 export class FurnitureBody extends FurnitureElement {
@@ -68,9 +90,10 @@ export class FurnitureBody extends FurnitureElement {
     public y: number,
     parrent: FurnitureElement | null = null,
     split: Split | null = null,
-    id: number = 0
+    id: number = 0,
+    material: string = 'pine'
   ) {
-    super(posX, posY, width, height, type, parrent, split,id);
+    super(posX, posY, width, height, type, parrent, split,id, FurnitureElementState.NEW, material);
   }
 
   public get absoluteX() : number {

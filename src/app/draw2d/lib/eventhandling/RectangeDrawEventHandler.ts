@@ -26,20 +26,21 @@ export class RectangeDrawEventHandler extends EventHandler {
     );
     this.drawSupport.drawRectangle(rectangle);
   }
+
   public onEnd(x: number, y: number): void {
-    if (this.startPosition == null) {
-      return;
-    }
-    this.drawSupport.setDrawColor('#000');
-    const rectangle = DrawHelper.calculateRectangle(
-      this.startPosition.x,
-      this.startPosition.y,
-      x,
-      y
-    );
-    const furnitureBody = ModelHelper.convertRectangleToFurnitureBody(rectangle);
-    this.modelManager.addFurnitureBody(furnitureBody);
-    this.drawSupport.clearScrean();
-    this.drawSupport.drawExistingElements();
-  }
+  if (this.startPosition == null) return;
+
+  const rectangle = DrawHelper.calculateRectangle(
+    this.startPosition.x, this.startPosition.y, x, y
+  );
+
+  const furnitureBody = ModelHelper.convertRectangleToFurnitureBody(rectangle);
+  
+  // ALAPÉRTELMEZETT ANYAG BEÁLLÍTÁSA:
+  (furnitureBody as any).material = 'pine'; 
+
+  this.modelManager.addFurnitureBody(furnitureBody);
+  this.drawSupport.clearScrean();
+  this.drawSupport.drawExistingElements();
+}
 }

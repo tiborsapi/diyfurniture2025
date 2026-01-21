@@ -9,13 +9,15 @@ import {
   SimpleChanges,
   HostListener,
 } from '@angular/core';
-import { BehaviorSubject, from, fromEvent, Observable, of } from 'rxjs';
+import { BehaviorSubject, from, fromEvent, Observable, of , Subscription} from 'rxjs';
 import { DiyFurnitureMouseEvent } from './lib/model/my-mouse-event.model';
 import { FurnitureBody, FurnitureElement, FurnitureElementType, Rectangle, SelectedFurniture, HorizontalSplit, VerticalSplit } from './lib/model/furniture-body.model';
 import { FurnitureModelManagerService } from './lib/model/furniture-model-manager.service';
 import { EventTranslateService } from './lib/eventhandling/event-translate.service';
 import { Draw2DSupportService } from './lib/draw/draw2-dsupport.service';
 import { MatSelectChange } from '@angular/material/select';
+
+import { FurnitureApiService } from './lib/services/furniture-api.service';
 
 interface FrontType {
   value: string;
@@ -40,7 +42,8 @@ export class Draw2dComponent implements AfterViewInit {
     private drawSupport: Draw2DSupportService,
     private eventTranslate: EventTranslateService,
     private eventHandler: EventHandlerManagerService,
-    private modelEvent: ModelchangeService
+    private modelEvent: ModelchangeService,
+    private apiService: FurnitureApiService
   ) {}
 
   @ViewChild('canvas') public canvas?: ElementRef;
@@ -53,6 +56,8 @@ export class Draw2dComponent implements AfterViewInit {
   private cx!: CanvasRenderingContext2D;
 
   private scale: number = 1;
+
+  private keySub?: Subscription;
 
   private _selectedElement: SelectedFurniture | null = null;
 
@@ -87,11 +92,16 @@ export class Draw2dComponent implements AfterViewInit {
   }
 
   public changeBodyDetails(): void {
-    if(this._selectedElementBody!=null) {
+    if (this._selectedElementBody != null) {
+      if (this.selectedElement && this.selectedElement.origin) {
+        this.selectedElement.origin.material = this._selectedElementBody.material;
+      }
       this.modelManager.refresh(this._selectedElementBody as FurnitureElement);
     }
+    
     this.drawRectangles();
   }
+
 
   public onSelectedElementSizeChanged(): void {
     if (!this._selectedElement) {
@@ -160,6 +170,20 @@ export class Draw2dComponent implements AfterViewInit {
     this.drawSupport.init(this.selectedElement$);
 
     this.captureEvents(canvasEl);
+    this.keySub = fromEvent<KeyboardEvent>(window, 'keydown').subscribe((e) => {
+  const isCtrlD = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd';
+  if (!isCtrlD) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  const ids = this.modelManager.getSelectedElementIds?.() ?? [];
+  if (ids.length === 0) return;
+
+  this.modelManager.duplicateSelected(10, 10);
+  this.drawRectangles();
+});
+
   }
 
   @HostListener('mousewheel', ['$event'])
@@ -207,16 +231,21 @@ export class Draw2dComponent implements AfterViewInit {
     }
     return 'default';
   }
+
   public captureEvents(canvasEl: HTMLCanvasElement): void {
     this.selectedElement$.subscribe((event) => {
       this._selectedElement = event;
       if (event == null) {
         this._selectedElementBody = null;
         this.selectedFrontTypes = undefined;
+        this.drawRectangles();
         return;
       }
+      
       this.selectedFrontTypes = FurnitureElementType[event.furnitureType].toString().toLocaleLowerCase();
       this._selectedElementBody = this.modelManager.findBody(event.origin);
+
+      this.drawRectangles(); 
     });
 
     fromEvent<MouseEvent>(canvasEl, 'mousemove').subscribe((event) => {
@@ -225,37 +254,17 @@ export class Draw2dComponent implements AfterViewInit {
       var posY = event.clientY - rect.top;
       var a = this.toWorld(posX, posY);
 
-      this.debugLog('Mouse move event:', {
-        clientX: event.clientX,
-        clientY: event.clientY,
-        canvasX: posX,
-        canvasY: posY,
-        worldX: a.x,
-        worldY: a.y,
-        figureType: this.figureType
-      });
-
-      // Check for split lines first (in move mode)
       if (this.figureType === 'move') {
         var split = this.modelManager.findSelectedSplit(a.x, a.y);
-        this.debugLog('Split detection result:', split);
         if (split != null && this.canvas && this.canvas.nativeElement) {
-          this.debugLog('Split found, setting cursor');
           const cursorType = split.split instanceof HorizontalSplit ? 'n-resize' : 'w-resize';
-          this.debugLog('Setting cursor to:', cursorType);
-          try {
-            this.canvas.nativeElement.style.cursor = cursorType;
-            this.debugLog('Cursor set successfully to:', this.canvas.nativeElement.style.cursor);
-          } catch (error) {
-            this.debugLog('Error setting cursor:', error);
-          }
+          this.canvas.nativeElement.style.cursor = cursorType;
           this.highlightSplit(split);
           return;
         }
       }
 
       var elem = this.modelManager.findSelectedElement(a.x, a.y);
-      this.debugLog('Element detection result:', elem);
       if (elem == null && this.canvas != undefined) {
         this.canvas.nativeElement.style.cursor = 'default';
         this.clearHighlight();
@@ -268,16 +277,20 @@ export class Draw2dComponent implements AfterViewInit {
         }
       }
     });
+
     this.eventTranslate.mouseEvents$.subscribe(
       (event: DiyFurnitureMouseEvent) => {
         this.eventHandler.onEvent(event);
+        
+        this.drawRectangles(); 
       }
     );
 
     this.modelEvent.subject$.subscribe((ev) => {
-      this.drawSupport.drawExistingElements();
+      this.drawRectangles();
     });
   }
+
   public ngOnChanges(changes: SimpleChanges): void {
     for (const propName in changes) {
       if (changes.hasOwnProperty(propName)) {
@@ -311,10 +324,24 @@ export class Draw2dComponent implements AfterViewInit {
   public onDrawActionChange(value: string): void {
     this.figureType = value;
     this.eventHandler.actionType = this.figureType;
+
+    this.drawRectangles();
   }
 
   public drawRectangles(): void {
-    this.drawSupport.drawExistingElements();
+    const isMoveMode = this.figureType === 'move';
+
+    this.drawSupport.drawExistingElements(isMoveMode);
+
+    if (this.selectedElement) {
+      const rect: Rectangle = {
+        posX: this.selectedElement.origin.absoluteX,
+        posY: this.selectedElement.origin.absoluteY,
+        width: this.selectedElement.width,
+        height: this.selectedElement.height
+      };
+      this.drawSupport.drawDimensions(rect);
+    }
   }
 
   public deleteSelectedElement(): void {
@@ -382,11 +409,9 @@ export class Draw2dComponent implements AfterViewInit {
   private highlightElement(element: FurnitureElement): void {
     if (!this.canvas) return;
 
-    // Set red color for highlighting
     this.cx.strokeStyle = '#ff0000';
     this.cx.lineWidth = 3;
 
-    // Always use absolute coordinates so highlights align with drawn elements
     const posX = element.absoluteX;
     const posY = element.absoluteY;
 
@@ -394,7 +419,77 @@ export class Draw2dComponent implements AfterViewInit {
   }
 
   private clearHighlight(): void {
-    // Redraw everything to clear any highlights
-    this.drawSupport.drawExistingElements();
+    this.drawRectangles();
+  }
+
+  public onGenerateShelves(count: string): void {
+    const shelfCount = parseInt(count, 10);
+    if(this.selectedElement && shelfCount > 0) {
+      this.modelManager.generateShelves(this.selectedElement.origin, shelfCount);
+      this.drawRectangles();
+    }
+  }
+
+  public exportPlan(): void {
+    this.drawSupport.exportAsImage(`furniture-plan${new Date().getTime()}.png`);
+    this.drawRectangles();
+  }
+
+  public get isDark(): boolean {
+    return this.drawSupport.isDarkMode;
+  }
+
+  public toggleTheme(): void {
+    this.drawSupport.toggleTheme();
+    this.drawRectangles();
+  }
+
+  public loadProject(): void {
+    this.apiService.getAllFurniture().subscribe({
+      next: (furnitures: any[]) => {
+        if (furnitures && furnitures.length > 0) {
+          const lastSaved = furnitures[furnitures.length - 1];
+          if (lastSaved.layout) {
+            const loadedData = JSON.parse(lastSaved.layout);
+            
+            this.modelManager.loadFurnitures([loadedData]);
+            
+            this.drawRectangles();
+            
+            alert("Plan uploaded!");
+          }
+        }
+      }
+    });
+  }
+
+  public saveProject(): void {
+    const allFurnitures = this.modelManager.getViewFurnitures();
+    if (!allFurnitures || allFurnitures.length === 0) return;
+    
+    const rootFurniture = (allFurnitures[0] as any).model;
+
+    if (rootFurniture) {
+      const payload = {
+        width: rootFurniture.width,
+        heigth: rootFurniture.height,
+        depth: rootFurniture.deepth || 0, 
+        material: rootFurniture.material || 'pine',
+        layout: JSON.stringify(rootFurniture)
+      };
+
+      this.apiService.saveFurniture(payload).subscribe({
+        next: (res) => alert('Plan saved!'),
+        error: (err) => {
+          console.error('Error:', err);
+          alert('Error while saving data.');
+        }
+      });
+    }
+  public async undo(): Promise<void> {
+    await this.modelManager.undo();
+    this.selectedElement = null;
+    this.selectedElementBody = null;
+    this.drawRectangles();
   }
 }

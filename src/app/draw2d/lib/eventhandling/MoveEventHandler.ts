@@ -1,7 +1,7 @@
 import { Directive } from '@angular/core';
-import { Rectangle, FurnitureElement, HorizontalSplit, VerticalSplit, FurnitureBody } from 'src/app/draw2d/lib/model/furniture-body.model';
+import { Rectangle } from 'src/app/draw2d/lib/model/furniture-body.model';
 import { EventHandler } from './EventHandler';
-
+import { FurnitureElement, HorizontalSplit, VerticalSplit, FurnitureBody } from '../model/furniture-body.model';
 @Directive()
 export class MoveEventHandler extends EventHandler {
   private selectedElement: Rectangle | null = null;
@@ -12,6 +12,8 @@ export class MoveEventHandler extends EventHandler {
   private originalElementX: number = 0;
   private originalElementY: number = 0;
   private originalSplitPosition: number = 0;
+  private dragIds: number[] = [];
+  private dragStartPositions: Map<number, { x: number; y: number }> = new Map();
 
   public onInit(): void {
     this.drawSupport.setDrawColor('#000');
@@ -22,135 +24,164 @@ export class MoveEventHandler extends EventHandler {
     this.isDragging = false;
     this.selectedElement = null;
     this.selectedSplit = null;
+    this.dragIds = [];
+    this.dragStartPositions.clear();
   }
 
   public onStart(x: number, y: number): void {
-    console.log('[MOVE] onStart called with coordinates:', { x, y });
+  console.log('### MOVE HANDLER VERSION: 2026-01-20 A (FIXED) ###');
+  console.log('[MOVE] onStart called with coordinates:', { x, y });
 
-    // First try to find a split line (horizontal or vertical)
-    this.selectedSplit = this.modelManager.findSelectedSplit(x, y);
-    console.log('[MOVE] Split detection result:', this.selectedSplit);
+  const shift = (window.event as MouseEvent | undefined)?.shiftKey === true;
 
-    if (this.selectedSplit) {
-      this.isDragging = true;
-      this.dragStartX = x;
-      this.dragStartY = y;
+  this.selectedSplit = this.modelManager.findSelectedSplit(x, y);
+  console.log('[MOVE] Split detection result:', this.selectedSplit);
 
-      // Store the original split position
-      if (this.selectedSplit.split instanceof HorizontalSplit) {
-        this.originalSplitPosition = this.selectedSplit.split.relativePositionY;
-        console.log('[MOVE] Starting horizontal split drag, original position:', this.originalSplitPosition);
-      } else if (this.selectedSplit.split instanceof VerticalSplit) {
-        this.originalSplitPosition = this.selectedSplit.split.relativePositionX;
-        console.log('[MOVE] Starting vertical split drag, original position:', this.originalSplitPosition);
-      }
-    } else {
-      // If no split found, try to find a regular element
-      const hitElement = this.modelManager.findSelectedElement(x, y);
-      console.log('[MOVE] Element detection result:', hitElement);
+  if (this.selectedSplit) {
+    this.isDragging = true;
+    this.dragStartX = x;
+    this.dragStartY = y;
 
-      // Move the ROOT furniture body when clicking anywhere inside it (including inner elements)
-      if (hitElement) {
-        const body = this.modelManager.findBody(hitElement as FurnitureElement);
-        this.selectedElement = body;
-        this.isDragging = true;
-        this.dragStartX = x;
-        this.dragStartY = y;
-        this.originalElementX = this.selectedElement.posX;
-        this.originalElementY = this.selectedElement.posY;
-        console.log('[MOVE] Starting FURNITURE BODY drag, original position:', { x: this.originalElementX, y: this.originalElementY });
+    if (this.selectedSplit.split instanceof HorizontalSplit) {
+      this.originalSplitPosition = this.selectedSplit.split.relativePositionY;
+    } else if (this.selectedSplit.split instanceof VerticalSplit) {
+      this.originalSplitPosition = this.selectedSplit.split.relativePositionX;
+    }
+
+    return;
+  }
+
+  const hitElement = this.modelManager.findSelectedElement(x, y);
+  console.log('[MOVE] Element detection result:', hitElement);
+
+  if (!hitElement) {
+    this.isDragging = false;
+    this.dragIds = [];
+    this.dragStartPositions.clear();
+    return;
+  }
+
+  const body = this.modelManager.findBody(hitElement as FurnitureElement) as any;
+  const hitId = body?.id ?? 0;
+
+  if (shift) {
+    if (hitId !== 0) {
+      this.modelManager.toggleSelectedElement(hitId);
+    }
+    this.isDragging = false;
+    this.dragIds = [];
+    this.dragStartPositions.clear();
+    this.drawSupport.drawExistingElements();
+    return;
+  }
+
+  const selectedIds = this.modelManager.getSelectedElementIds();
+  const isHitAlreadySelected = hitId !== 0 && selectedIds.includes(hitId);
+  const hasMultiSelected = selectedIds.length > 1;
+
+  if (isHitAlreadySelected && hasMultiSelected) {
+    this.dragIds = selectedIds;
+  } else {
+    this.modelManager.setSingleSelectedElement(hitId);
+    this.dragIds = hitId !== 0 ? [hitId] : [];
+  }
+
+  this.dragStartPositions.clear();
+  for (const sid of this.dragIds) {
+    const el = this.modelManager.findElementById(sid) as any;
+    if (!el) continue;
+
+    const isBody = el.x !== undefined && el.y !== undefined;
+    this.dragStartPositions.set(sid, {
+      x: isBody ? el.x : el.posX,
+      y: isBody ? el.y : el.posY,
+    });
+  }
+
+  this.isDragging = true;
+  this.dragStartX = x;
+  this.dragStartY = y;
+
+  console.log('[MOVE] dragIds:', this.dragIds);
+  this.drawSupport.drawExistingElements();
+}
+  public onMove(xPrev: number, yPrev: number, x: number, y: number): void {
+  console.log('[MOVE] onMove called:', { xPrev, yPrev, x, y, isDragging: this.isDragging });
+
+  const gridSize = 3;
+
+  if (this.selectedSplit && this.isDragging) {
+    const deltaX = x - this.dragStartX;
+    const deltaY = y - this.dragStartY;
+
+    if (this.selectedSplit.split instanceof HorizontalSplit) {
+      const rawPosition = this.originalSplitPosition + deltaY;
+      const newPosition = Math.max(
+        5,
+        Math.min(this.selectedSplit.element.height - 5, Math.round(rawPosition / gridSize) * gridSize)
+      );
+
+      this.selectedSplit.split.relativePositionY = newPosition;
+
+      const split = this.selectedSplit.split;
+      const element = this.selectedSplit.element;
+      split.topElement.height = newPosition;
+      split.bottomElement.posY = newPosition;
+      split.bottomElement.height = element.height - newPosition;
+
+    } else if (this.selectedSplit.split instanceof VerticalSplit) {
+      const rawPosition = this.originalSplitPosition + deltaX;
+      const newPosition = Math.max(
+        5,
+        Math.min(this.selectedSplit.element.width - 5, Math.round(rawPosition / gridSize) * gridSize)
+      );
+
+      this.selectedSplit.split.relativePositionX = newPosition;
+
+      const split = this.selectedSplit.split;
+      const element = this.selectedSplit.element;
+      split.leftElement.width = newPosition;
+      split.rightElement.posX = newPosition;
+      split.rightElement.width = element.width - newPosition;
+    }
+
+    this.normalizeLayout(this.selectedSplit.element);
+    this.modelManager.refresh(this.selectedSplit.element);
+    this.drawSupport.drawExistingElements();
+
+  } else if (this.isDragging && this.dragIds.length > 0) {
+    const deltaX = x - this.dragStartX;
+    const deltaY = y - this.dragStartY;
+
+    for (const sid of this.dragIds) {
+      const el = this.modelManager.findElementById(sid) as any;
+      const start = this.dragStartPositions.get(sid);
+      if (!el || !start) continue;
+
+      const newPosX = start.x + deltaX;
+      const newPosY = start.y + deltaY;
+
+      const snappedX = Math.round(newPosX / gridSize) * gridSize;
+      const snappedY = Math.round(newPosY / gridSize) * gridSize;
+
+      const isBody = el.x !== undefined && el.y !== undefined;
+
+      if (isBody) {
+        el.x = snappedX;
+        el.y = snappedY;
       } else {
-        this.selectedElement = null;
-        this.isDragging = false;
+        el.posX = snappedX;
+        el.posY = snappedY;
       }
     }
 
-    console.log('[MOVE] Drag state after onStart:', { isDragging: this.isDragging, selectedSplit: !!this.selectedSplit, selectedElement: !!this.selectedElement });
+    this.drawSupport.drawExistingElements();
+
+  } else if (!this.selectedElement && !this.selectedSplit) {
+    this.drawSupport.translatePage(xPrev - x, yPrev - y);
     this.drawSupport.drawExistingElements();
   }
-
-  public onMove(xPrev: number, yPrev: number, x: number, y: number): void {
-    console.log('[MOVE] onMove called:', { xPrev, yPrev, x, y, isDragging: this.isDragging, selectedSplit: !!this.selectedSplit, selectedElement: !!this.selectedElement });
-
-    if (this.selectedSplit && this.isDragging) {
-      // Handle split line movement
-      const deltaX = x - this.dragStartX;
-      const deltaY = y - this.dragStartY;
-      console.log('[MOVE] Moving split, deltas:', { deltaX, deltaY });
-
-      if (this.selectedSplit.split instanceof HorizontalSplit) {
-        // Move horizontal split line vertically
-        const newPosition = Math.max(5, Math.min(
-          this.selectedSplit.element.height - 5,
-          this.originalSplitPosition + deltaY
-        ));
-        console.log('[MOVE] Moving horizontal split from', this.originalSplitPosition, 'to', newPosition);
-        this.selectedSplit.split.relativePositionY = newPosition;
-
-        // Update child element positions and sizes
-        const split = this.selectedSplit.split;
-        const element = this.selectedSplit.element;
-
-        // Top element gets taller/shorter based on split movement
-        split.topElement.height = newPosition;
-        split.topElement.posY = 0;
-
-        // Bottom element position and height adjusted
-        split.bottomElement.posY = newPosition;
-        split.bottomElement.height = element.height - newPosition;
-
-        // Ensure widths follow parent and are aligned to left
-        split.topElement.width = element.width;
-        split.bottomElement.width = element.width;
-        split.topElement.posX = 0;
-        split.bottomElement.posX = 0;
-      } else if (this.selectedSplit.split instanceof VerticalSplit) {
-        // Move vertical split line horizontally
-        const newPosition = Math.max(5, Math.min(
-          this.selectedSplit.element.width - 5,
-          this.originalSplitPosition + deltaX
-        ));
-        console.log('[MOVE] Moving vertical split from', this.originalSplitPosition, 'to', newPosition);
-        this.selectedSplit.split.relativePositionX = newPosition;
-
-        // Update child element positions and sizes
-        const split = this.selectedSplit.split;
-        const element = this.selectedSplit.element;
-
-        // Left element gets wider/narrower based on split movement
-        split.leftElement.width = newPosition;
-        split.leftElement.posX = 0;
-        split.leftElement.height = element.height;
-
-        // Right element position and width need to be adjusted
-        split.rightElement.posX = newPosition;
-        split.rightElement.width = element.width - newPosition;
-        split.rightElement.height = element.height;
-      }
-
-      // Normalize subtree to ensure nested elements resize to parent
-      this.normalizeLayout(this.selectedSplit.element);
-      // Update the model to reflect the changes
-      this.modelManager.refresh(this.selectedSplit.element);
-      this.drawSupport.drawExistingElements();
-    } else if (this.selectedElement && this.isDragging) {
-      // Handle furniture body movement only
-      const deltaX = x - this.dragStartX;
-      const deltaY = y - this.dragStartY;
-      console.log('[MOVE] Moving furniture BODY, deltas:', { deltaX, deltaY });
-
-      // Update the body's position; child elements remain attached via relative coordinates
-      this.selectedElement.posX = this.originalElementX + deltaX;
-      this.selectedElement.posY = this.originalElementY + deltaY;
-
-      this.drawSupport.drawExistingElements();
-    } else if (!this.selectedElement && !this.selectedSplit) {
-      // Page translation when no element is selected
-      console.log('[MOVE] Page translation');
-      this.drawSupport.translatePage(xPrev - x, yPrev - y);
-      this.drawSupport.drawExistingElements();
-    }
-  }
+}
 
   // Recursively normalize a subtree so that after a split movement or parent resize,
   // all nested children align to their parent's dimensions.
@@ -208,12 +239,13 @@ export class MoveEventHandler extends EventHandler {
         // Finalize the split move by updating the model
         console.log('[MOVE] Finalizing split move');
         this.modelManager.refresh(this.selectedSplit.element);
-      } else if (this.selectedElement) {
-        // Finalize the element move by updating the model
-        console.log('[MOVE] Finalizing element move');
-        this.modelManager.refresh(this.selectedElement as FurnitureElement);
-      }
+      } else if (this.dragIds.length > 0) {
+        for (const sid of this.dragIds) {
+          const el = this.modelManager.findElementById(sid);
+          if (el) this.modelManager.refresh(el);
+        }
     }
+  }
 
     this.isDragging = false;
     this.selectedElement = null;
@@ -221,3 +253,4 @@ export class MoveEventHandler extends EventHandler {
     console.log('[MOVE] Drag operation ended');
   }
 }
+
