@@ -88,26 +88,34 @@ export class EventHandlerManagerService {
   }
 
   public onEvent(mouseEvent: DiyFurnitureMouseEvent): void {
-    const handler = this.getEventHandler(this._actionType);
-    handler.onInit();
-    switch (mouseEvent.type) {
-      case MyMouseEventType.START:
-        handler.onStart(mouseEvent.x1, mouseEvent.y1);
-        break;
-      case MyMouseEventType.MOVE:
-        handler.onMove(
-          mouseEvent.x1,
-          mouseEvent.y1,
-          mouseEvent.x2,
-          mouseEvent.y2
-        );
-        break;
-      case MyMouseEventType.END:
-        handler.onEnd(mouseEvent.x1, mouseEvent.y1);
-        handler.onFinsish();
-        break;
-    }
+  const handler = this.getEventHandler(this._actionType);
+  handler.onInit();
+
+  const mod = { shift: mouseEvent.shiftKey === true };
+
+  switch (mouseEvent.type) {
+    case MyMouseEventType.START:
+      handler.onStart(mouseEvent.x1, mouseEvent.y1, { shift: mouseEvent.shiftKey === true });
+      break;
+
+
+    case MyMouseEventType.MOVE:
+      (handler as any).onMove(
+        mouseEvent.x1,
+        mouseEvent.y1,
+        mouseEvent.x2,
+        mouseEvent.y2,
+        mod
+      );
+      break;
+
+    case MyMouseEventType.END:
+      (handler as any).onEnd(mouseEvent.x1, mouseEvent.y1, mod);
+      handler.onFinsish();
+      break;
   }
+}
+
 
   getEventHandler(actionType: string): EventHandler {
     var handler = this.actionHandlers.get(actionType);

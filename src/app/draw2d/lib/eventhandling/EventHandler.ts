@@ -9,7 +9,7 @@ export abstract class EventHandler {
     protected modelManager: FurnitureModelManagerService
   ) { }
   public abstract onInit(): void;
-  public abstract onStart(x: number, y: number): void;
+  public abstract onStart(x: number, y: number, mod?: { shift?: boolean }): void;
   public abstract onMove(
     xPrev: number,
     yPrev: number,
